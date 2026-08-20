@@ -1,0 +1,19 @@
+tests:
+  - name: Check product
+    request:
+      method: get
+      path: /product
+      query:
+        id: "{{userId}}"
+
+    assertions:
+      - type: status
+        equals: 200
+
+      - type: json
+        path: success
+        equals: true
+
+      - type: json
+        path: product_id
+        equals: "{{userId}}"

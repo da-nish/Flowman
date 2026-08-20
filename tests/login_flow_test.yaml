@@ -1,0 +1,48 @@
+
+# API-flow tests run their steps in order. `extract` stores a response field as
+# a collection variable; later steps reference it with {{variable_name}}.
+flows:
+# Success login flow
+  - name: Login to user profile flow
+    steps:
+      - name: Flow - login and capture credentials
+        request:
+          method: POST
+          path: /login
+          body:
+            email: "qa@example.com"
+            password: "valid-password"
+        assertions:
+          - type: status
+            equals: 200
+        extract:
+          access_token: token
+          logged_in_user_id: user.id
+
+      - name: Flow - get the logged-in user
+        request:
+          method: GET
+          path: /users
+          query:
+            user_id: "{{logged_in_user_id}}"
+          headers:
+            Authorization: "Bearer {{access_token}}"
+        assertions:
+          - type: status
+            equals: 200
+          - type: json
+            path: user_id
+            equals: "1"
+# Fail login flow
+  - name: Invalid login to user profile flow
+    steps:
+      - name: Flow - login and capture credentials
+        request:
+          method: POST
+          path: /login
+          body:
+            email: "0000"
+            password: "1111"
+        assertions:
+          - type: status
+            equals: 401

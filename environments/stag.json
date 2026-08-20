@@ -1,0 +1,10 @@
+{
+  "name": "stag",
+  "values": [
+    {
+      "key": "baseUrl",
+      "value": "https://staging.example.com",
+      "enabled": true
+    }
+  ]
+}

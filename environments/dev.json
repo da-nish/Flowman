@@ -1,0 +1,15 @@
+{
+  "name": "dev",
+  "values": [
+    {
+      "key": "baseUrl",
+      "value": "http://127.0.0.1:8000",
+      "enabled": true
+    },
+    {
+      "key": "customApiKey",
+      "value": "custom_api_key: ds98f879df89s7df97df987sd897fs87d9f",
+      "enabled": true
+    }
+  ]
+}

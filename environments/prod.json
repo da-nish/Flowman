@@ -1,0 +1,10 @@
+{
+  "name": "prod",
+  "values": [
+    {
+      "key": "baseUrl",
+      "value": "https://production.example.com",
+      "enabled": true
+    }
+  ]
+}
