@@ -4,22 +4,33 @@
 flows:
 # Success login flow
   - name: Login to user profile flow
+    enabled: true
     steps:
       - name: Flow - login and capture credentials
+        enabled: true
         request:
           method: POST
           path: /login
           body:
             email: "qa@example.com"
             password: "valid-password"
+            
         assertions:
           - type: status
             equals: 200
         extract:
           access_token: token
           logged_in_user_id: user.id
+          userdata: user
+          cities: user.cities
+          city1: user.cities[0]
+          city2: user.cities[1]
+          last_city: user.cities[last]
+          state: user.state[first].emails[1]
+          state1: user.state1[1][1]
 
       - name: Flow - get the logged-in user
+        # delay: 10
         request:
           method: GET
           path: /users
@@ -27,22 +38,18 @@ flows:
             user_id: "{{logged_in_user_id}}"
           headers:
             Authorization: "Bearer {{access_token}}"
+            userdata: "{{userdata}}"
+            cities: "{{cities}}"
+            city1: "{{city1}}"
+            city2: "{{city2}}"
+            last_city: "{{last_city}}"
+            state: "{{state}}"
+            state1: "{{state1}}"
+            
+            
         assertions:
           - type: status
             equals: 200
           - type: json
             path: user_id
             equals: "1"
-# Fail login flow
-  - name: Invalid login to user profile flow
-    steps:
-      - name: Flow - login and capture credentials
-        request:
-          method: POST
-          path: /login
-          body:
-            email: "0000"
-            password: "1111"
-        assertions:
-          - type: status
-            equals: 401

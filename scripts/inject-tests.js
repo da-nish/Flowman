@@ -17,10 +17,15 @@ if (yamlFiles.length === 0) {
     process.exit(1);
 }
 
-const definition = { tests: [], flows: [] };
+const definition = { testGroups: [], flows: [] };
 for (const fileName of yamlFiles) {
     const parsed = YAML.parse(fs.readFileSync(path.join(TEST_DIR, fileName), "utf8")) || {};
-    if (Array.isArray(parsed.tests)) definition.tests.push(...parsed.tests);
+    if (Array.isArray(parsed.tests)) {
+        definition.testGroups.push({
+            name: parsed.folder || path.basename(fileName, path.extname(fileName)),
+            tests: parsed.tests,
+        });
+    }
     if (Array.isArray(parsed.flows)) definition.flows.push(...parsed.flows);
 }
 console.log(`Loaded ${yamlFiles.length} YAML file(s) from ${TEST_DIR}`);
@@ -28,7 +33,7 @@ console.log(`Loaded ${yamlFiles.length} YAML file(s) from ${TEST_DIR}`);
 function requestUrl(request) {
     if (!request.path) throw new Error("Each request requires a path.");
     const requestPath = String(request.path);
-    return /^https?:\/\//i.test(requestPath)
+    return /^(?:https?:\/\/|\{\{[^{}]+\}\}\/)/i.test(requestPath)
         ? requestPath
         : `{{baseUrl}}/${requestPath.replace(/^\/+/, "")}`;
 }
@@ -68,8 +73,45 @@ function bodyFor(body) {
     return { mode: "raw", raw: JSON.stringify(body), options: { raw: { language: "json" } } };
 }
 
+function runtimeValueExpression(value) {
+    if (typeof value === "string") {
+        const match = value.match(/^\{\{([^{}]+)\}\}$/);
+        if (match) return `resolveRuntimeValue(${JSON.stringify(match[1])})`;
+        return JSON.stringify(value);
+    }
+    if (Array.isArray(value)) return `[${value.map(runtimeValueExpression).join(", ")}]`;
+    if (value && typeof value === "object") {
+        return `{${Object.entries(value).map(([key, item]) => `${JSON.stringify(key)}: ${runtimeValueExpression(item)}`).join(", ")}}`;
+    }
+    return JSON.stringify(value);
+}
+
+function generatePreRequestScript(request) {
+    const lines = [
+        "function resolveRuntimeValue(name) {",
+        "    const iterationValue = pm.iterationData.get(name);",
+        "    const value = iterationValue !== undefined ? iterationValue : pm.collectionVariables.get(name);",
+        "    if (typeof value !== \"string\" || !/^[\\[{]/.test(value)) return value;",
+        "    try { return JSON.parse(value); } catch (error) { return value; }",
+        "}",
+    ];
+    if (request.body !== undefined) {
+        lines.push(`pm.request.body.raw = JSON.stringify(${runtimeValueExpression(request.body)});`);
+    }
+    Object.entries(request.headers || {}).forEach(([key, value]) => {
+        if (typeof value !== "string" || !/^\{\{[^{}]+\}\}$/.test(value)) return;
+        const variable = value.match(/^\{\{([^{}]+)\}\}$/)[1];
+        lines.push(`pm.request.headers.upsert({ key: ${JSON.stringify(key)}, value: (function (value) { return value !== null && typeof value === "object" ? JSON.stringify(value) : String(value); })(resolveRuntimeValue(${JSON.stringify(variable)})) });`);
+    });
+    return lines;
+}
+
 function responsePath(sourcePath) {
-    const parts = String(sourcePath).split(".").filter(Boolean);
+    const parts = String(sourcePath)
+        .replace(/\[\s*(\d+)\s*\]/g, ".$1")
+        .replace(/\[\s*(first|last)\s*\]/gi, ".$1")
+        .split(".")
+        .filter(Boolean);
     // Paths are relative to pm.response.json(). For this API the response body
     // is wrapped as { response: { data: ... } }, so keep `response` intact.
     if (parts[0] === "$") parts.shift();
@@ -77,7 +119,7 @@ function responsePath(sourcePath) {
 }
 
 function responseValue(sourcePath) {
-    return `${JSON.stringify(responsePath(sourcePath))}.reduce(function (value, key) { return value == null ? undefined : value[key]; }, pm.response.json())`;
+    return `${JSON.stringify(responsePath(sourcePath))}.reduce(function (value, key) { if (value == null) return undefined; if (key === "first") return Array.isArray(value) ? value[0] : undefined; if (key === "last") return Array.isArray(value) ? value[value.length - 1] : undefined; return value[key]; }, pm.response.json())`;
 }
 
 function generateValueExpression(value) {
@@ -116,7 +158,7 @@ function generateTestScript(step) {
             `pm.test(${JSON.stringify(`Extract ${variable}`)}, function () {`,
             `    pm.expect(extracted_${safeVariable}, ${JSON.stringify(`Response field ${sourcePath}`)}).to.not.equal(undefined);`,
             "});",
-            `pm.collectionVariables.set(${JSON.stringify(variable)}, extracted_${safeVariable});`,
+            `pm.collectionVariables.set(${JSON.stringify(variable)}, typeof extracted_${safeVariable} === "object" && extracted_${safeVariable} !== null ? JSON.stringify(extracted_${safeVariable}) : extracted_${safeVariable});`,
         ].join("\n");
     });
     return [...assertions, ...extractions].join("\n\n");
@@ -136,27 +178,35 @@ function buildItem(step) {
     const event = [];
     const delayMs = Number(step.delay || 0) * 1000;
     if (delayMs > 0) event.push({ listen: "prerequest", script: { type: "text/javascript", exec: [`setTimeout(function () { }, ${delayMs});`] } });
+    const preRequestScript = generatePreRequestScript(request);
+    if (preRequestScript.length) event.push({ listen: "prerequest", script: { type: "text/javascript", exec: preRequestScript } });
     const testScript = generateTestScript(step);
     if (testScript) event.push({ listen: "test", script: { type: "text/javascript", exec: testScript.split("\n") } });
 
     return { name: step.name || `${postmanRequest.method} ${request.path}`, request: postmanRequest, event, response: [] };
 }
 
-const testItems = definition.tests.filter(test => test.enabled !== false && test.enable !== true).map(buildItem);
+const testFolders = definition.testGroups
+    .map(group => ({
+        name: group.name,
+        item: group.tests.filter(test => test.enabled !== false).map(buildItem),
+    }))
+    .filter(group => group.item.length > 0);
 const flowItems = definition.flows
-    .filter(flow => flow.enabled !== false && flow.enable !== true)
+    .filter(flow => flow.enabled !== false)
     .map(flow => ({
         name: flow.name || "Unnamed flow",
-        item: (flow.steps || []).filter(step => step.enabled !== false && step.enable !== true).map(buildItem),
+        item: (flow.steps || []).filter(step => step.enabled !== false).map(buildItem),
     }));
 
 const collection = {
     info: { name: "YAML Newman Tests", schema: "https://schema.getpostman.com/json/collection/v2.1.0/collection.json" },
-    item: [...(testItems.length ? [{ name: "YAML Tests", item: testItems }] : []), ...flowItems],
+    item: [...testFolders, ...flowItems],
 };
 
 fs.mkdirSync(path.dirname(OUTPUT_FILE), { recursive: true });
 fs.writeFileSync(OUTPUT_FILE, JSON.stringify(collection, null, 2));
-console.log(`Created ${OUTPUT_FILE} with ${testItems.length} test cases and ${flowItems.length} flows.`);
+const testCount = testFolders.reduce((count, folder) => count + folder.item.length, 0);
+console.log(`Created ${OUTPUT_FILE} with ${testCount} test cases in ${testFolders.length} folder(s) and ${flowItems.length} flows.`);
 
 

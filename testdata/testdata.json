@@ -1,14 +1,8 @@
 [
   {
-    "username": "user1",
-    "userId": 11
-  },
-  {
-    "username": "user2",
-    "userId": 22
-  },
-  {
-    "username": "user3",
-    "userId": 33
+    "email": "danish@altinvest.ai",
+    "password": "password",
+    "userId": 11,
+    "baseUrlNew": "http://127.0.0.1:9999"
   }
 ]
