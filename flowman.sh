@@ -3,8 +3,8 @@
 set -e
 
 PROJECT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
-COLLECTION_FILE="$PROJECT_DIR/collections/postman_collection.json"
-REPORT_FILE="$PROJECT_DIR/reports/newman-report.html"
+COLLECTION_FILE="$PROJECT_DIR/generated/collections/postman_collection.json"
+REPORT_FILE="$PROJECT_DIR/generated/reports/newman-report.html"
 
 echo ""
 echo "========================================"
@@ -24,7 +24,7 @@ echo "========================================"
 echo "🔄  Generating Postman collection"
 echo "========================================"
 mkdir -p "$(dirname "$COLLECTION_FILE")" "$(dirname "$REPORT_FILE")"
-node scripts/inject-tests.js
+node scripts/builder.js
 echo "Collection created: $COLLECTION_FILE"
 
 echo ""
@@ -38,7 +38,14 @@ newman run "$COLLECTION_FILE" \
     -e "$PROJECT_DIR/environments/dev.json" \
     -d "$PROJECT_DIR/testdata/testdata.json" \
     -r htmlextra \
-    --reporter-htmlextra-export "$REPORT_FILE"
+    --reporter-htmlextra-export "$REPORT_FILE" \
+    --reporter-htmlextra-title "Flowman - API Test Report" \
+    --reporter-htmlextra-browserTitle "Flowman" \
+    --reporter-htmlextra-titleSize 3 \
+    --reporter-htmlextra-logs \
+    --reporter-htmlextra-showEnvironmentData \
+    --reporter-htmlextra-displayProgressBar
+    
 
 echo ""
 echo "========================================"

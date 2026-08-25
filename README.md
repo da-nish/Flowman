@@ -1,6 +1,6 @@
-# Read Me
+# Flowman YAML Guide
 
-This package lets you define API tests and ordered API flows in YAML. The YAML files are converted into a Postman collection by `scripts`, then executed by Newman.
+Flowman lets you define API tests and ordered API flows in YAML. The YAML files are converted into a Postman collection by `scripts`, then executed by Newman.
 
 This guide describes the supported YAML structure, configuration keys, variables, assertions, response extraction, object values, array selectors, folders, and execution commands.
 
@@ -164,7 +164,7 @@ headers:
   X-User-Data: "{{userobj}}"
 ```
 
-If a request has a body and no `Content-Type` header, It automatically adds:
+If a request has a body and no `Content-Type` header, Flowman automatically adds:
 
 ```text
 Content-Type: application/json
@@ -202,6 +202,25 @@ The generated request becomes similar to:
   "roles": ["tester", "reviewer"]
 }
 ```
+
+### 3.6 `request.formdata`
+
+Use `formdata` for multipart requests and file uploads. Each part requires `key` and uses `type: text` with `value`, or `type: file` with `src`:
+
+```yaml
+request:
+  method: POST
+  path: /documents/upload
+  formdata:
+    - key: title
+      type: text
+      value: "{{documentTitle}}"
+    - key: document
+      type: file
+      src: testdata/files/document.pdf
+```
+
+Relative file paths are resolved from the project directory; absolute paths are also supported. Do not define both `body` and `formdata` on the same request. Newman/Postman creates the multipart boundary automatically.
 
 
 ## 4. Response Assertions
@@ -591,7 +610,7 @@ request:
 
 ## 12. Supported Features Summary
 
-Currently supports:
+Flowman currently supports:
 
 - YAML-defined standalone API tests.
 - Ordered multi-request API flows.

@@ -280,7 +280,42 @@ users[first][last]
 - Nested object fields and multidimensional arrays can be combined with either selector.
 - A missing index or a selector applied to a non-array causes the extraction assertion to fail.
 
-## 8. Test a Negative Login Case
+## 8. Upload a File with Multipart Form-Data
+
+### When to use
+
+Use `formdata` when an endpoint accepts a file upload, such as a document, image, or CSV file.
+
+### Example
+
+```yaml
+tests:
+  - name: Upload identity document
+    request:
+      method: POST
+      path: /documents/upload
+      formdata:
+        - key: document_type
+          type: text
+          value: identity
+        - key: user_id
+          type: text
+          value: "{{userId}}"
+        - key: document
+          type: file
+          src: testdata/files/identity.pdf
+    assertions:
+      - type: status
+        equals: 201
+```
+
+### Result
+
+Flowman creates a multipart request with text fields and attaches `testdata/files/identity.pdf` as the `document` field. Relative paths are resolved from the project directory. Use an absolute path when the file is outside the project.
+
+Do not define `body` and `formdata` together on the same request. The multipart boundary is generated automatically.
+
+## 9. Test a Negative Login Case
 
 ### When to use
 
@@ -306,7 +341,7 @@ tests:
 
 The test passes only when the API returns `401`. A successful login response causes the test to fail.
 
-## 9. Use a Different Base URL for One API
+## 10. Use a Different Base URL for One API
 
 ### When to use
 
@@ -357,7 +392,7 @@ http://127.0.0.1:9988/product
 
 It is not incorrectly prefixed with `baseUrl`.
 
-## 10. Organize Tests into Custom Report Folders
+## 11. Organize Tests into Custom Report Folders
 
 ### When to use
 
@@ -382,7 +417,7 @@ tests:
 
 The report folder is `Catalog Smoke Tests`. Without `folder`, the filename without `.yaml` is used.
 
-## 11. Temporarily Disable a Test, Flow, or Step
+## 12. Temporarily Disable a Test, Flow, or Step
 
 ### When to use
 
@@ -432,7 +467,7 @@ flows:
 
 Items are enabled by default. Use `enabled`, not `enable`.
 
-## 12. Add a Delay Between Flow Requests
+## 13. Add a Delay Between Flow Requests
 
 ### When to use
 
@@ -464,7 +499,7 @@ flows:
 
 `delay` is expressed in seconds and applies to the flow step.
 
-## 13. Run the Use Cases
+## 14. Run the Use Cases
 
 Install the required packages:
 
@@ -476,7 +511,7 @@ npm install -g newman newman-reporter-htmlextra
 Generate the Postman collection without running requests:
 
 ```sh
-node scripts/inject-tests.js
+node scripts/builder.js
 ```
 
 Run the default development environment and iteration data:
@@ -489,8 +524,8 @@ The default script uses:
 
 - `environments/dev.json`
 - `testdata/testdata.json`
-- `collections/postman_collection.json`
-- `reports/newman-report.html`
+- `generated/collections/postman_collection.json`
+- `generated/reports/newman-report.html`
 
 Run a different environment directly:
 
@@ -502,7 +537,7 @@ newman run collections/postman_collection.json \
   --reporter-htmlextra-export reports/newman-report.html
 ```
 
-## 14. Choosing Between Tests and Flows
+## 15. Choosing Between Tests and Flows
 
 | Need | Use |
 |---|---|

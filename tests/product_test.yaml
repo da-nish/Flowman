@@ -1,12 +1,12 @@
 folder: Product API Tests
 tests:
   - name: Get Product
-    # enabled: false
+    enabled: false
     request:
       method: get
       path: /product
       query:
-        id: 11
+        id: "{{userId}}"
 
     assertions:
       - type: status
@@ -19,3 +19,4 @@ tests:
       - type: json
         path: product_id
         equals: 11
+      

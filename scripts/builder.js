@@ -4,7 +4,7 @@ const YAML = require("yaml");
 
 const NEWMAN_DIR = path.resolve(__dirname, "..");
 const TEST_DIR = path.join(NEWMAN_DIR, "tests");
-const OUTPUT_FILE = path.join(NEWMAN_DIR, "collections", "postman_collection.json");
+const OUTPUT_FILE = path.join(NEWMAN_DIR, "generated", "collections", "postman_collection.json");
 
 if (!fs.existsSync(TEST_DIR)) {
     console.error(`Missing tests directory: ${TEST_DIR}`);
@@ -73,6 +73,23 @@ function bodyFor(body) {
     return { mode: "raw", raw: JSON.stringify(body), options: { raw: { language: "json" } } };
 }
 
+function formdataFor(formdata) {
+    if (!Array.isArray(formdata)) throw new Error("request.formdata must be a list.");
+    return {
+        mode: "formdata",
+        formdata: formdata.map(part => {
+            if (!part || !part.key) throw new Error("Each formdata part requires a key.");
+            const type = part.type || "text";
+            if (type === "file") {
+                if (!part.src) throw new Error(`File formdata part "${part.key}" requires src.`);
+                return { key: String(part.key), type: "file", src: path.isAbsolute(part.src) ? part.src : path.resolve(NEWMAN_DIR, part.src) };
+            }
+            if (type !== "text") throw new Error(`Unsupported formdata type "${type}" for "${part.key}".`);
+            return { key: String(part.key), type: "text", value: part.value === undefined ? "" : String(part.value) };
+        }),
+    };
+}
+
 function runtimeValueExpression(value) {
     if (typeof value === "string") {
         const match = value.match(/^\{\{([^{}]+)\}\}$/);
@@ -97,6 +114,14 @@ function generatePreRequestScript(request) {
     ];
     if (request.body !== undefined) {
         lines.push(`pm.request.body.raw = JSON.stringify(${runtimeValueExpression(request.body)});`);
+    }
+    if (Array.isArray(request.formdata)) {
+        request.formdata.forEach(part => {
+            if ((part.type || "text") !== "text" || typeof part.value !== "string") return;
+            const match = part.value.match(/^\{\{([^{}]+)\}\}$/);
+            if (!match) return;
+            lines.push(`pm.request.body.formdata.filter(function (item) { return item.key === ${JSON.stringify(String(part.key))}; }).forEach(function (item) { var value = resolveRuntimeValue(${JSON.stringify(match[1])}); item.value = value !== null && typeof value === "object" ? JSON.stringify(value) : String(value); });`);
+        });
     }
     Object.entries(request.headers || {}).forEach(([key, value]) => {
         if (typeof value !== "string" || !/^\{\{[^{}]+\}\}$/.test(value)) return;
@@ -172,8 +197,12 @@ function buildItem(step) {
         header: headersFor(request),
         url: toPostmanUrl(requestUrl(request), request.query),
     };
+    if (request.formdata !== undefined && request.body !== undefined) {
+        throw new Error(`Request "${step.name || "unnamed"}" cannot define both body and formdata.`);
+    }
     const body = bodyFor(request.body);
     if (body) postmanRequest.body = body;
+    if (request.formdata !== undefined) postmanRequest.body = formdataFor(request.formdata);
 
     const event = [];
     const delayMs = Number(step.delay || 0) * 1000;
@@ -208,5 +237,3 @@ fs.mkdirSync(path.dirname(OUTPUT_FILE), { recursive: true });
 fs.writeFileSync(OUTPUT_FILE, JSON.stringify(collection, null, 2));
 const testCount = testFolders.reduce((count, folder) => count + folder.item.length, 0);
 console.log(`Created ${OUTPUT_FILE} with ${testCount} test cases in ${testFolders.length} folder(s) and ${flowItems.length} flows.`);
-
-
