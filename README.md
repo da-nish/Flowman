@@ -33,6 +33,9 @@ The important directories and files are:
 
 The `generated/` and its subfolders (`collections/` and `reports/`) should be ignored by Git.
 
+![Screenshot](flow.png)
+
+
 ## 2. YAML File Layout
 
 A YAML file can contain either or both of these root-level sections:
@@ -51,6 +54,7 @@ tests:
     request:
       method: GET
       path: /product
+      query:
 ```
 
 
@@ -59,7 +63,6 @@ Flow example-
 ```yaml
 flows:
   - name: Login to user profile flow
-    enabled: true
     steps:
       - name: Flow - Email Login
         request:
