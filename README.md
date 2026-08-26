@@ -1,6 +1,8 @@
-# Flowman YAML Guide
+# Flowman Readme
 
-Flowman lets you define API tests and ordered API flows in YAML. The YAML files are converted into a Postman collection by `scripts`, then executed by Newman.
+Flowman lets you define API tests and ordered API flows in YAML. The YAML files are converted into a Postman collection by `scripts`, then executed by Newman and generate a report. 
+
+It is not only a Newman wrapper. Internally, it uses several components to manage and execute the tests, including the Newman CLI, an HTML report generator, builder scripts, environment and variable JSON files, and shell scripts that handle communication between the different components.
 
 This guide describes the supported YAML structure, configuration keys, variables, assertions, response extraction, object values, array selectors, folders, and execution commands.
 
@@ -23,11 +25,13 @@ npm install -g newman newman-reporter-htmlextra
 ## 1. Project Structure
 
 The important directories and files are:
-1. Test cases are stored as JSON files in the `testdata/` directory.
-2. Test and flow logic is stored as YAML files in the `tests/` directory.
-3. An HTML report is generated in the `reports/` directory.
+1. Test cases data stored as JSON files in the `testdata/` directory.
+2. Environment data stored as JSON files in the `environments/` directory.
+3. Test and flow logic is stored as YAML files in the `tests/` directory.
+4. An HTML report is generated in the `generated/reports/` directory.
+5. Postman collection is generated in the `generated/collections/` directory.
 
-The `collections/` and `reports/` folders are generated and ignored by Git.
+The `generated/` and its subfolders (`collections/` and `reports/`) should be ignored by Git.
 
 ## 2. YAML File Layout
 
