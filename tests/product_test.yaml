@@ -6,7 +6,7 @@ tests:
       method: get
       path: /product
       query:
-        id: "{{userId}}"
+        id: "{{itemId}}"
 
     assertions:
       - type: status
@@ -18,5 +18,5 @@ tests:
 
       - type: json
         path: product_id
-        equals: 11
+        equals: "{{itemId}}"
       

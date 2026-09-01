@@ -1,8 +1,8 @@
 [
   {
     "email": "danish@altinvest.ai",
-    "password": "password",
-    "userId": 11,
+    "password": "12345",
+    "itemId": 11,
     "baseUrlNew": "http://127.0.0.1:9999"
   }
 ]
