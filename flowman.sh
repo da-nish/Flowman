@@ -34,22 +34,34 @@ echo "========================================"
 echo "Environment: $PROJECT_DIR/environments/dev.json"
 echo "Test data:   $PROJECT_DIR/testdata/testdata.json"
 
-newman run "$COLLECTION_FILE" \
-    -e "$PROJECT_DIR/environments/dev.json" \
-    -d "$PROJECT_DIR/testdata/testdata.json" \
-    -r htmlextra \
-    --reporter-htmlextra-export "$REPORT_FILE" \
-    --reporter-htmlextra-title "Flowman - API Test Report" \
-    --reporter-htmlextra-browserTitle "Flowman" \
-    --reporter-htmlextra-titleSize 3 \
-    --reporter-htmlextra-logs \
-    --reporter-htmlextra-showEnvironmentData \
-    --reporter-htmlextra-displayProgressBar
+
+if [[ "$1" == "cli" ]]; then
+    newman run "$COLLECTION_FILE" \
+        -e "$PROJECT_DIR/environments/dev.json" \
+        -d "$PROJECT_DIR/testdata/testdata.json"
+else
+    newman run "$COLLECTION_FILE" \
+        -e "$PROJECT_DIR/environments/dev.json" \
+        -d "$PROJECT_DIR/testdata/testdata.json" \
+        -r htmlextra \
+        --reporter-htmlextra-export "$REPORT_FILE" \
+        --reporter-htmlextra-title "Flowman - API Test Report" \
+        --reporter-htmlextra-browserTitle "Flowman" \
+        --reporter-htmlextra-titleSize 3 \
+        --reporter-htmlextra-logs \
+        --reporter-htmlextra-showEnvironmentData \
+        --reporter-htmlextra-displayProgressBar
+fi
+
     
 
 echo ""
 echo "========================================"
 echo "✅ Test run completed successfully"
 echo "========================================"
-echo "HTML report: $REPORT_FILE"
+
+if [[ "$1" != "cli" ]]; then
+    echo ""
+    echo "📝 HTML report: $REPORT_FILE"
+fi
 echo ""
