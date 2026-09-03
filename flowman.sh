@@ -6,12 +6,60 @@ PROJECT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
 COLLECTION_FILE="$PROJECT_DIR/generated/collections/postman_collection.json"
 REPORT_FILE="$PROJECT_DIR/generated/reports/newman-report.html"
 
+# ========================================
+# Parse arguments
+# ========================================
+
+ENVIRONMENT="${1:-dev}"
+MODE="${2:-report}"
+
+case "$ENVIRONMENT" in
+    dev|stag|prod)
+        ;;
+    *)
+        echo "Error: Invalid environment '$ENVIRONMENT'."
+        echo "Usage:"
+        echo "  $0 <dev|stag|prod> [cli]"
+        echo ""
+        echo "Examples:"
+        echo "  $0 dev"
+        echo "  $0 stag"
+        echo "  $0 prod"
+        echo "  $0 dev cli"
+        echo "  $0 prod cli"
+        exit 1
+        ;;
+esac
+
+if [[ "$MODE" != "cli" && "$MODE" != "report" ]]; then
+    echo "Error: Invalid mode '$MODE'. Use 'cli' or omit it for HTML report."
+    echo "Usage: $0 <dev|stag|prod> [cli]"
+    exit 1
+fi
+
+ENV_FILE="$PROJECT_DIR/environments/${ENVIRONMENT}.json"
+
+if [[ ! -f "$ENV_FILE" ]]; then
+    echo "Error: Environment file not found:"
+    echo "$ENV_FILE"
+    exit 1
+fi
+
 echo ""
 echo "========================================"
 echo "⏳  Checking required commands"
 echo "========================================"
-command -v node >/dev/null 2>&1 || { echo "Error: Node.js is not installed."; exit 1; }
-command -v newman >/dev/null 2>&1 || { echo "Error: Newman is not installed."; exit 1; }
+
+command -v node >/dev/null 2>&1 || {
+    echo "Error: Node.js is not installed."
+    exit 1
+}
+
+command -v newman >/dev/null 2>&1 || {
+    echo "Error: Newman is not installed."
+    exit 1
+}
+
 node -e "require('yaml')" >/dev/null 2>&1 || {
     echo "Error: The Node.js package 'yaml' is not installed. Run: npm install yaml"
     exit 1
@@ -23,6 +71,7 @@ echo ""
 echo "========================================"
 echo "🔄  Generating Postman collection"
 echo "========================================"
+
 mkdir -p "$(dirname "$COLLECTION_FILE")" "$(dirname "$REPORT_FILE")"
 node scripts/builder.js
 echo "Collection created: $COLLECTION_FILE"
@@ -31,17 +80,17 @@ echo ""
 echo "========================================"
 echo "🔫  Running Newman tests"
 echo "========================================"
-echo "Environment: $PROJECT_DIR/environments/dev.json"
+echo "Environment: $ENV_FILE"
 echo "Test data:   $PROJECT_DIR/testdata/testdata.json"
 
+if [[ "$MODE" == "cli" ]]; then
 
-if [[ "$1" == "cli" ]]; then
     newman run "$COLLECTION_FILE" \
-        -e "$PROJECT_DIR/environments/dev.json" \
+        -e "$ENV_FILE" \
         -d "$PROJECT_DIR/testdata/testdata.json"
 else
     newman run "$COLLECTION_FILE" \
-        -e "$PROJECT_DIR/environments/dev.json" \
+        -e "$ENV_FILE" \
         -d "$PROJECT_DIR/testdata/testdata.json" \
         -r htmlextra \
         --reporter-htmlextra-export "$REPORT_FILE" \
@@ -53,15 +102,15 @@ else
         --reporter-htmlextra-displayProgressBar
 fi
 
-    
 
 echo ""
 echo "========================================"
 echo "✅ Test run completed successfully"
 echo "========================================"
 
-if [[ "$1" != "cli" ]]; then
+if [[ "$MODE" != "cli" ]]; then
     echo ""
     echo "📝 HTML report: $REPORT_FILE"
 fi
+
 echo ""

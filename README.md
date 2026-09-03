@@ -615,6 +615,23 @@ request:
 ```
 
 
+## 12. Commands
+
+
+Run tests with the default dev environment:
+```json
+./run.sh
+```
+
+Run tests with the custom environment:
+
+```json
+./run.sh              → dev
+./run.sh dev          → dev
+./run.sh stag         → stag
+./run.sh prod         → prod
+```
+
 ## 12. Supported Features Summary
 
 Flowman currently supports:
