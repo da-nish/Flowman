@@ -1,6 +1,10 @@
-const fs = require("fs");
-const path = require("path");
-const YAML = require("yaml");
+import fs from "node:fs";
+import path from "node:path";
+import { fileURLToPath } from "node:url";
+import YAML from "yaml";
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 const NEWMAN_DIR = path.resolve(__dirname, "..");
 const TEST_DIR = path.join(NEWMAN_DIR, "tests");
