@@ -1,6 +1,145 @@
-# Flowman Use Cases
+# How to Use
 
-This document shows practical ways to use Flowman for API validation. Use `guide.md` for the complete key-by-key reference.
+
+## Requirements
+
+- Node.js and npm
+- Newman
+- A running API environment
+
+Install the required tools:
+
+```bash
+npm install yaml
+npm install --global newman newman-reporter-htmlextra
+```
+
+## Directory Structure
+
+```text
+automate_test/
+├── environments/       # API base URLs and environment variables
+├── testdata/            # Data used for test iterations
+├── tests/               # YAML API tests and flows
+└── flowman.sh          # Test runner
+```
+
+## Configure an Environment
+
+Edit the environment file that you want to use, for example `environments/dev.json`:
+
+```json
+{
+  "name": "dev",
+  "values": [
+    {
+      "key": "baseUrl",
+      "value": "http://127.0.0.1:8000",
+      "enabled": true
+    }
+  ]
+}
+```
+
+Requests in YAML can use the variable:
+
+```yaml
+request:
+  method: GET
+  path: /health
+```
+
+Relative paths are sent to `{{baseUrl}}`. You can also use an absolute URL in `path`.
+
+## Add Tests
+
+Create or edit a `.yaml` file in `tests/`:
+
+```yaml
+tests:
+  - name: Health check
+    request:
+      method: GET
+      path: /health
+    assertions:
+      - type: status
+        equals: 200
+```
+
+Use `flows` when requests must run in order:
+
+```yaml
+flows:
+  - name: Example flow
+    steps:
+      - name: First request
+        request:
+          method: GET
+          path: /health
+        assertions:
+          - type: status
+            equals: 200
+```
+
+Request bodies, query parameters, headers, JSON assertions, and response extraction are supported. Test iteration values are read from `testdata/testdata.json`.
+
+## Run the Tests
+
+From this directory, make the script executable once:
+
+```bash
+chmod +x flowman.sh
+```
+
+Run against the development environment and generate an HTML report:
+
+```bash
+./flowman.sh dev
+```
+
+Run against staging or production:
+
+```bash
+./flowman.sh stag
+./flowman.sh prod
+```
+
+Print results in the terminal without generating an HTML report:
+
+```bash
+./flowman.sh dev cli
+```
+
+The available environments are `dev`, `stag`, and `prod`.
+
+## Output
+
+Each run first generates:
+
+```text
+generated/collections/postman_collection.json
+```
+
+The default report mode also creates:
+
+```text
+generated/reports/newman-report.html
+```
+
+Open the HTML report in a browser to review request results and assertion failures. A non-zero exit code means that at least one test failed.
+
+## Troubleshooting
+
+- `Node.js is not installed`: install Node.js and npm.
+- `Newman is not installed`: run `npm install --global newman newman-reporter-htmlextra`.
+- `The Node.js package 'yaml' is not installed`: run `npm install yaml` from the `automate_test/` directory.
+- `Environment file not found`: check that `environments/dev.json`, `environments/stag.json`, or `environments/prod.json` exists.
+- Connection errors: confirm that the API is running and `baseUrl` points to the correct address.
+
+
+# AutomateTest Use Cases
+
+This document shows practical ways to use AutomateTest for API validation. Use `guide.md` for the complete key-by-key reference.
 
 ## 1. Validate an Independent API
 
@@ -280,42 +419,7 @@ users[first][last]
 - Nested object fields and multidimensional arrays can be combined with either selector.
 - A missing index or a selector applied to a non-array causes the extraction assertion to fail.
 
-## 8. Upload a File with Multipart Form-Data
-
-### When to use
-
-Use `formdata` when an endpoint accepts a file upload, such as a document, image, or CSV file.
-
-### Example
-
-```yaml
-tests:
-  - name: Upload identity document
-    request:
-      method: POST
-      path: /documents/upload
-      formdata:
-        - key: document_type
-          type: text
-          value: identity
-        - key: user_id
-          type: text
-          value: "{{userId}}"
-        - key: document
-          type: file
-          src: testdata/files/identity.pdf
-    assertions:
-      - type: status
-        equals: 201
-```
-
-### Result
-
-Flowman creates a multipart request with text fields and attaches `testdata/files/identity.pdf` as the `document` field. Relative paths are resolved from the project directory. Use an absolute path when the file is outside the project.
-
-Do not define `body` and `formdata` together on the same request. The multipart boundary is generated automatically.
-
-## 9. Test a Negative Login Case
+## 8. Test a Negative Login Case
 
 ### When to use
 
@@ -341,7 +445,7 @@ tests:
 
 The test passes only when the API returns `401`. A successful login response causes the test to fail.
 
-## 10. Use a Different Base URL for One API
+## 9. Use a Different Base URL for One API
 
 ### When to use
 
@@ -392,7 +496,7 @@ http://127.0.0.1:9988/product
 
 It is not incorrectly prefixed with `baseUrl`.
 
-## 11. Organize Tests into Custom Report Folders
+## 10. Organize Tests into Custom Report Folders
 
 ### When to use
 
@@ -417,7 +521,7 @@ tests:
 
 The report folder is `Catalog Smoke Tests`. Without `folder`, the filename without `.yaml` is used.
 
-## 12. Temporarily Disable a Test, Flow, or Step
+## 11. Temporarily Disable a Test, Flow, or Step
 
 ### When to use
 
@@ -467,7 +571,7 @@ flows:
 
 Items are enabled by default. Use `enabled`, not `enable`.
 
-## 13. Add a Delay Between Flow Requests
+## 12. Add a Delay Between Flow Requests
 
 ### When to use
 
@@ -499,7 +603,7 @@ flows:
 
 `delay` is expressed in seconds and applies to the flow step.
 
-## 14. Run the Use Cases
+## 13. Run the Use Cases
 
 Install the required packages:
 
@@ -511,7 +615,7 @@ npm install -g newman newman-reporter-htmlextra
 Generate the Postman collection without running requests:
 
 ```sh
-node scripts/builder.js
+node scripts/inject-tests.js
 ```
 
 Run the default development environment and iteration data:
@@ -524,8 +628,8 @@ The default script uses:
 
 - `environments/dev.json`
 - `testdata/testdata.json`
-- `generated/collections/postman_collection.json`
-- `generated/reports/newman-report.html`
+- `collections/postman_collection.json`
+- `reports/newman-report.html`
 
 Run a different environment directly:
 
@@ -537,7 +641,7 @@ newman run collections/postman_collection.json \
   --reporter-htmlextra-export reports/newman-report.html
 ```
 
-## 15. Choosing Between Tests and Flows
+## 14. Choosing Between Tests and Flows
 
 | Need | Use |
 |---|---|

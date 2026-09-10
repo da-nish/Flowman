@@ -4,7 +4,7 @@ set -e
 
 PROJECT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
 COLLECTION_FILE="$PROJECT_DIR/generated/collections/postman_collection.json"
-REPORT_FILE="$PROJECT_DIR/generated/reports/newman-report.html"
+REPORT_FILE="$PROJECT_DIR/generated/reports/report.html"
 
 # ========================================
 # Parse arguments
@@ -78,7 +78,7 @@ echo "Collection created: $COLLECTION_FILE"
 
 echo ""
 echo "========================================"
-echo "🔫  Running Newman tests"
+echo "🔫  Running API tests"
 echo "========================================"
 echo "Environment: $ENV_FILE"
 echo "Test data:   $PROJECT_DIR/testdata/testdata.json"
