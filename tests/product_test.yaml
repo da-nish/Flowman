@@ -1,7 +1,7 @@
 folder: Product API Tests
 tests:
   - name: Get Product
-    enabled: false
+    enabled: true
     request:
       method: get
       path: /product

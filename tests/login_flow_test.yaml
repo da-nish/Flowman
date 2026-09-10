@@ -14,6 +14,7 @@ flows:
         assertions:
           - type: status
             equals: 200
+            
         extract:
           access_token: token
           logged_in_user_id: user.id
