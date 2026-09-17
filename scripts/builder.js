@@ -8,7 +8,10 @@ const __dirname = path.dirname(__filename);
 
 const NEWMAN_DIR = path.resolve(__dirname, "..");
 const TEST_DIR = path.join(NEWMAN_DIR, "tests");
+const TEST_DATA_FILE = path.join(NEWMAN_DIR, "testdata", "testdata.json");
 const OUTPUT_FILE = path.join(NEWMAN_DIR, "generated", "collections", "postman_collection.json");
+const environmentName = process.argv[2] || "dev";
+const environmentFile = path.join(NEWMAN_DIR, "environments", `${environmentName}.json`);
 
 if (!fs.existsSync(TEST_DIR)) {
     console.error(`Missing tests directory: ${TEST_DIR}`);
@@ -20,6 +23,46 @@ if (yamlFiles.length === 0) {
     console.error(`No YAML test files found in ${TEST_DIR}`);
     process.exit(1);
 }
+
+if (!fs.existsSync(environmentFile)) {
+    console.error(`Missing environment file: ${environmentFile}`);
+    process.exit(1);
+}
+
+const environment = JSON.parse(fs.readFileSync(environmentFile, "utf8"));
+const collectionVariables = (environment.values || [])
+    .filter(variable => variable && variable.key)
+    .map(variable => ({
+        key: String(variable.key),
+        value: variable.value === undefined ? "" : String(variable.value),
+        type: "string",
+    }));
+
+if (!fs.existsSync(TEST_DATA_FILE)) {
+    console.error(`Missing test data file: ${TEST_DATA_FILE}`);
+    process.exit(1);
+}
+
+const testData = JSON.parse(fs.readFileSync(TEST_DATA_FILE, "utf8"));
+if (!Array.isArray(testData) || !testData.every(row => row && typeof row === "object" && !Array.isArray(row))) {
+    console.error(`Test data must be an array of JSON objects: ${TEST_DATA_FILE}`);
+    process.exit(1);
+}
+
+const firstTestDataRow = testData[0] || {};
+const collectionVariableKeys = new Set(collectionVariables.map(variable => variable.key));
+Object.entries(firstTestDataRow).forEach(([key, value]) => {
+    if (collectionVariableKeys.has(key)) {
+        const variable = collectionVariables.find(item => item.key === key);
+        variable.value = typeof value === "string" ? value : JSON.stringify(value);
+        return;
+    }
+    collectionVariables.push({
+        key,
+        value: typeof value === "string" ? value : JSON.stringify(value),
+        type: "string",
+    });
+});
 
 const definition = { testGroups: [], flows: [] };
 for (const fileName of yamlFiles) {
@@ -58,7 +101,9 @@ function toPostmanUrl(raw, query) {
 
     if (query && typeof query === "object") {
         url.query = Object.entries(query).map(([key, value]) => ({ key, value: String(value) }));
-        const queryString = url.query.map(({ key, value }) => `${encodeURIComponent(key)}=${encodeURIComponent(value)}`).join("&");
+        const queryString = url.query
+            .map(({ key, value }) => `${encodeURIComponent(key)}=${encodeURIComponent(value).replace(/%7B%7B/g, "{{").replace(/%7D%7D/g, "}}")}`)
+            .join("&");
         url.raw = `${raw}${raw.includes("?") ? "&" : "?"}${queryString}`;
     }
     return url;
@@ -154,7 +199,7 @@ function responseValue(sourcePath) {
 function generateValueExpression(value) {
     if (typeof value === "string") {
         const match = value.match(/^\{\{([^{}]+)\}\}$/);
-        if (match) return `pm.iterationData.get(${JSON.stringify(match[1])})`;
+        if (match) return `(pm.iterationData.get(${JSON.stringify(match[1])}) ?? pm.collectionVariables.get(${JSON.stringify(match[1])}))`;
     }
     return JSON.stringify(value);
 }
@@ -234,10 +279,11 @@ const flowItems = definition.flows
 
 const collection = {
     info: { name: "YAML Newman Tests", schema: "https://schema.getpostman.com/json/collection/v2.1.0/collection.json" },
+    variable: collectionVariables,
     item: [...testFolders, ...flowItems],
 };
 
 fs.mkdirSync(path.dirname(OUTPUT_FILE), { recursive: true });
 fs.writeFileSync(OUTPUT_FILE, JSON.stringify(collection, null, 2));
 const testCount = testFolders.reduce((count, folder) => count + folder.item.length, 0);
-console.log(`Created ${OUTPUT_FILE} with ${testCount} test cases in ${testFolders.length} folder(s) and ${flowItems.length} flows.`);
+console.log(`Created ${OUTPUT_FILE} with ${testCount} test cases in ${testFolders.length} folder(s), ${flowItems.length} flows, and ${collectionVariables.length} ${environmentName} collection variable(s).`);
