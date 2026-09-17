@@ -21,7 +21,7 @@ automate_test/
 ├── environments/       # API base URLs and environment variables
 ├── testdata/            # Data used for test iterations
 ├── tests/               # YAML API tests and flows
-└── flowman.sh          # Test runner
+└── test.sh          # Test runner
 ```
 
 ## Configure an Environment
@@ -88,26 +88,26 @@ Request bodies, query parameters, headers, JSON assertions, and response extract
 From this directory, make the script executable once:
 
 ```bash
-chmod +x flowman.sh
+chmod +x test.sh
 ```
 
 Run against the development environment and generate an HTML report:
 
 ```bash
-./flowman.sh dev
+./test.sh dev
 ```
 
 Run against staging or production:
 
 ```bash
-./flowman.sh stag
-./flowman.sh prod
+./test.sh stag
+./test.sh prod
 ```
 
 Print results in the terminal without generating an HTML report:
 
 ```bash
-./flowman.sh dev cli
+./test.sh dev cli
 ```
 
 The available environments are `dev`, `stag`, and `prod`.

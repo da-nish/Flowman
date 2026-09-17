@@ -1,6 +1,6 @@
-# Flowman Readme
+# AutomateTest Readme
 
-Flowman lets you define API tests and ordered API flows in YAML. The YAML files are converted into a Postman collection by `scripts`, then executed by Newman and generate a report. 
+AutomateTest lets you define API tests and ordered API flows in YAML. The YAML files are converted into a Postman collection by `scripts`, then executed by Newman and generate a report. 
 
 It is not only a Newman wrapper. Internally, it uses several components to manage and execute the tests, including the Newman CLI, an HTML report generator, builder scripts, environment and variable JSON files, and shell scripts that handle communication between the different components.
 
@@ -8,10 +8,26 @@ This guide describes the supported YAML structure, configuration keys, variables
 
 
 
+## Challenges with Postman
+
+
+- __Manual collection sharing:__ Postman collections may need to be manually shared or exported/imported between team members.
+
+- __API dependencies__: Passing tokens, IDs, and response values between APIs can make workflows complex.
+
+- __Test data__: Managing multiple datasets separately from test logic can become cumbersome.
+
+- __Test execution__: Running a large number of tests manually is slow and repetitive.
+
+- __Reporting__: Teams need a simple consolidated view of passed, failed, and failed-response details.
+
+- __CI/CD integration:__ Automated execution requires additional setup rather than simply running the YAML test definitions.
+
+
 ## Requirements
 
 - Node.js
-- Newman
+- Newman, yaml
 - A running API to test
 
 Install the dependencies once:
@@ -161,7 +177,7 @@ Query values are converted to strings because URL query parameters are text valu
 ```yaml
 headers:
   Authorization: "Bearer {{access_token}}"
-  X-Request-Source: flowman
+  X-Request-Source: AutomateTest
 ```
 
 Header values are strings. A complete object or array placeholder is serialized as JSON text:
@@ -171,7 +187,7 @@ headers:
   X-User-Data: "{{userobj}}"
 ```
 
-If a request has a body and no `Content-Type` header, Flowman automatically adds:
+If a request has a body and no `Content-Type` header, AutomateTest automatically adds:
 
 ```text
 Content-Type: application/json
@@ -620,21 +636,21 @@ request:
 
 Run tests with the default dev environment:
 ```json
-./run.sh
+./test.sh
 ```
 
 Run tests with the custom environment:
 
 ```json
-./run.sh              → dev
-./run.sh dev          → dev
-./run.sh stag         → stag
-./run.sh prod         → prod
+./test.sh              → dev
+./test.sh dev          → dev
+./test.sh stag         → stag
+./test.sh prod         → prod
 ```
 
 ## 12. Supported Features Summary
 
-Flowman currently supports:
+AutomateTest currently supports:
 
 - YAML-defined standalone API tests.
 - Ordered multi-request API flows.
