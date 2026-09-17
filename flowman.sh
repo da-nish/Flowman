@@ -73,7 +73,7 @@ echo "🔄  Generating Postman collection"
 echo "========================================"
 
 mkdir -p "$(dirname "$COLLECTION_FILE")" "$(dirname "$REPORT_FILE")"
-node scripts/builder.js
+node scripts/builder.js "$ENVIRONMENT"
 echo "Collection created: $COLLECTION_FILE"
 
 echo ""
@@ -111,6 +111,18 @@ echo "========================================"
 if [[ "$MODE" != "cli" ]]; then
     echo ""
     echo "📝 HTML report: $REPORT_FILE"
+
+    case "$OSTYPE" in
+        darwin*)
+            open "$REPORT_FILE"
+            ;;
+        linux*)
+            xdg-open "$REPORT_FILE" >/dev/null 2>&1 &
+            ;;
+        msys*|cygwin*)
+            start "" "$REPORT_FILE"
+            ;;
+    esac
 fi
 
 echo ""
