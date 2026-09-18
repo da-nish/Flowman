@@ -46,6 +46,7 @@ The important directories and files are:
 3. Test and flow logic is stored as YAML files in the `tests/` directory.
 4. An HTML report is generated in the `generated/reports/` directory.
 5. Postman collection is generated in the `generated/collections/` directory.
+6. Responses will be stored in the `generated/response/`.
 
 The `generated/` and its subfolders (`collections/` and `reports/`) should be ignored by Git.
 
@@ -92,6 +93,7 @@ flows:
           path: /pin-auth
           body:
 ```
+
 
 It can also contain an optional custom folder name:
 
@@ -534,7 +536,45 @@ A step can include a numeric `delay` value in seconds. It is converted to millis
 
 Use delay only on flow steps where a pause between requests is needed.
 
-## 10. Complete Example
+
+
+## 10. Saving response
+
+You can save API responses—whether they are JSON, PDFs, or binary files—by setting `save: true`. 
+
+This feature is turned off by default (`save: false`) and works for both individual tests and multi-step flows.
+
+```yaml
+tests:
+  - name: Export product data
+    save: true
+    request:
+      method: GET
+      path: /products/export
+
+flows:
+  - name: Login flow
+    save: true
+    steps:
+      - name: Login
+        request:
+          method: POST
+          path: /login
+      - name: Get profile without saving it
+        save: false
+        request:
+          method: GET
+          path: /profile
+```
+
+
+Saved API responses are stored in the generated/response/<test-folder-or-flow>/ directory, matching the structure of your HTML report.
+
+Each saved file is named using the format `<iteration>__<request-order>__<step>__response.<extension>`. 
+
+The file extension is determined by the Content-Disposition header if available, or else by the response content type (such as `.json`, `.pdf`, or `.bin`). responses are still saved even if the Newman run encounters assertion failures.
+
+## 11. Complete Example
 
 ```yaml
 folder: User API Tests
@@ -595,7 +635,7 @@ flows:
             equals: "{{userId}}"
 ```
 
-## 11. Environments
+## 12. Environments
 
 
 Set the API URL in the selected environment file, for example `environments/dev.json`:
@@ -631,7 +671,7 @@ request:
 ```
 
 
-## 12. Commands
+## 13. Commands
 
 
 Run tests with the default dev environment:
@@ -648,7 +688,7 @@ Run tests with the custom environment:
 ./test.sh prod         → prod
 ```
 
-## 12. Supported Features Summary
+## 14. Supported Features Summary
 
 AutomateTest currently supports:
 

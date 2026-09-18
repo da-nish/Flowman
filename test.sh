@@ -5,6 +5,8 @@ set -e
 PROJECT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
 COLLECTION_FILE="$PROJECT_DIR/generated/collections/postman_collection.json"
 REPORT_FILE="$PROJECT_DIR/generated/reports/report.html"
+NEWMAN_JSON_FILE="$PROJECT_DIR/generated/response/newman-results.json"
+RESPONSE_DIR="$PROJECT_DIR/generated/response"
 
 # ========================================
 # Parse arguments
@@ -72,7 +74,10 @@ echo "========================================"
 echo "🔄  Generating Postman collection"
 echo "========================================"
 
-mkdir -p "$(dirname "$COLLECTION_FILE")" "$(dirname "$REPORT_FILE")"
+# Response artifacts are per-run: discard the previous run before generating
+# the collection and recreate the directory for this run.
+rm -rf "$RESPONSE_DIR"
+mkdir -p "$(dirname "$COLLECTION_FILE")" "$(dirname "$REPORT_FILE")" "$RESPONSE_DIR"
 node scripts/builder.js "$ENVIRONMENT"
 echo "Collection created: $COLLECTION_FILE"
 
@@ -83,16 +88,20 @@ echo "========================================"
 echo "Environment: $ENV_FILE"
 echo "Test data:   $PROJECT_DIR/testdata/testdata.json"
 
+set +e
 if [[ "$MODE" == "cli" ]]; then
 
     newman run "$COLLECTION_FILE" \
         -e "$ENV_FILE" \
-        -d "$PROJECT_DIR/testdata/testdata.json"
+        -d "$PROJECT_DIR/testdata/testdata.json" \
+        -r cli,json \
+        --reporter-json-export "$NEWMAN_JSON_FILE"
 else
     newman run "$COLLECTION_FILE" \
         -e "$ENV_FILE" \
         -d "$PROJECT_DIR/testdata/testdata.json" \
-        -r htmlextra \
+        -r htmlextra,json \
+        --reporter-json-export "$NEWMAN_JSON_FILE" \
         --reporter-htmlextra-export "$REPORT_FILE" \
         --reporter-htmlextra-title "Flowman - API Test Report" \
         --reporter-htmlextra-browserTitle "Flowman" \
@@ -100,6 +109,16 @@ else
         --reporter-htmlextra-logs \
         --reporter-htmlextra-showEnvironmentData \
         --reporter-htmlextra-displayProgressBar
+fi
+NEWMAN_STATUS=$?
+set -e
+
+node "$PROJECT_DIR/scripts/save-responses.js" "$NEWMAN_JSON_FILE" "$RESPONSE_DIR"
+rm -f "$NEWMAN_JSON_FILE"
+
+if [[ "$NEWMAN_STATUS" -ne 0 ]]; then
+    echo "Test run completed with failures. Saved responses, if configured, are in: $RESPONSE_DIR"
+    exit "$NEWMAN_STATUS"
 fi
 
 

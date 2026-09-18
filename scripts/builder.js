@@ -206,7 +206,11 @@ function generateValueExpression(value) {
 
 function generateAssertion(assertion) {
     if (assertion.type === "status") {
-        return `pm.test("Status is ${assertion.equals}", function () {\n    pm.response.to.have.status(${assertion.equals});\n});`;
+        const expectedStatus = Number(assertion.equals);
+        if (!Number.isInteger(expectedStatus) || expectedStatus < 100 || expectedStatus > 599) {
+            throw new Error(`Status assertion requires an HTTP status code: ${JSON.stringify(assertion.equals)}`);
+        }
+        return `pm.test("Status is ${expectedStatus}", function () {\n    const actualStatus = pm.response && pm.response.code;\n    pm.expect(actualStatus, "HTTP response status code").to.be.a("number");\n    pm.expect(actualStatus).to.eql(${expectedStatus});\n});`;
     }
     if (assertion.type === "json") {
         const value = responseValue(assertion.path);
@@ -238,7 +242,9 @@ function generateTestScript(step) {
     return [...assertions, ...extractions].join("\n\n");
 }
 
-function buildItem(step) {
+let itemSequence = 0;
+
+function buildItem(step, saveResponse = false, scopeName = "Tests") {
     if (!step.request) throw new Error(`Request "${step.name || "unnamed"}" has no request definition.`);
     const request = step.request;
     const postmanRequest = {
@@ -261,20 +267,33 @@ function buildItem(step) {
     const testScript = generateTestScript(step);
     if (testScript) event.push({ listen: "test", script: { type: "text/javascript", exec: testScript.split("\n") } });
 
-    return { name: step.name || `${postmanRequest.method} ${request.path}`, request: postmanRequest, event, response: [] };
+    return {
+        // The ID lets the response archiver match a Newman execution back to this
+        // YAML item, including when the same item runs for multiple data rows.
+        id: `flowman-${++itemSequence}`,
+        name: step.name || `${postmanRequest.method} ${request.path}`,
+        request: postmanRequest,
+        event,
+        response: [],
+        // `description` is part of the Postman schema, unlike arbitrary custom
+        // properties, so Newman preserves this metadata in its JSON report.
+        description: { content: `<!-- flowman-save-response=${saveResponse === true};flowman-scope=${encodeURIComponent(scopeName)} -->` },
+    };
 }
 
 const testFolders = definition.testGroups
     .map(group => ({
         name: group.name,
-        item: group.tests.filter(test => test.enabled !== false).map(buildItem),
+        item: group.tests.filter(test => test.enabled !== false).map(test => buildItem(test, test.save === true, group.name)),
     }))
     .filter(group => group.item.length > 0);
 const flowItems = definition.flows
     .filter(flow => flow.enabled !== false)
     .map(flow => ({
         name: flow.name || "Unnamed flow",
-        item: (flow.steps || []).filter(step => step.enabled !== false).map(buildItem),
+        // A step-level value is optional, but allows a flow-wide save setting to
+        // be disabled for one noisy or sensitive endpoint.
+        item: (flow.steps || []).filter(step => step.enabled !== false).map(step => buildItem(step, step.save === undefined ? flow.save === true : step.save === true, flow.name || "Unnamed flow")),
     }));
 
 const collection = {

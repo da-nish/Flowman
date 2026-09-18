@@ -1,4 +1,4 @@
-folder: Product API Tests
+folder: Product API
 tests:
   - name: Get Product
     enabled: true
@@ -19,4 +19,3 @@ tests:
       - type: json
         path: product_id
         equals: "{{itemId}}"
-      

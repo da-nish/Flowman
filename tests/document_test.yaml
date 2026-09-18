@@ -4,7 +4,8 @@
 flows:
 # Success login flow
   - name: Upload and download flow
-    enabled: false
+    enabled: true
+    save: true
     steps:
       - name: 1. - Upload
         request:
