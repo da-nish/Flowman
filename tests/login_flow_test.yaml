@@ -2,8 +2,9 @@
 flows:
   - name: Login to user profile flow
     enabled: true
+    save: true
     steps:
-      - name: Flow - login and capture credentials
+      - name: Login and capture credentials
         request:
           method: POST
           path: /login
@@ -23,7 +24,7 @@ flows:
           city1: user.cities[0]
           city2: user.cities[1]
 
-      - name: Flow - get the logged-in user
+      - name: Get the logged-in user
         # delay: 10
         request:
           method: GET
