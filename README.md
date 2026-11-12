@@ -1,5 +1,13 @@
 # Flowman Readme
 
+
+**Flowman is a simple and flexible API testing tool designed to make end-to-end API testing easier, faster, and more manageable.**
+
+It allows developers and QA engineers to define API test cases and complete API workflows in a simple, readable format. Instead of testing individual endpoints manually, Flowman helps you connect multiple API requests into meaningful business scenarios and validate how your application behaves from beginning to end.
+
+Whether you are building a backend using Node.js, Java, Python, Go, .NET, or any other technology, or developing a frontend using React, Angular, Vue, or another framework, Flowman can help you test the APIs your application depends on.
+
+
 Flowman lets you define API tests and ordered API flows in YAML. The YAML files are converted into a Postman collection by `scripts`, then executed by Newman and generate a report. 
 
 It is not only a Newman wrapper. Internally, it uses several components to manage and execute the tests, including the Newman CLI, an HTML report generator, builder scripts, environment and variable JSON files, and shell scripts that handle communication between the different components.
